@@ -1,0 +1,120 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  fullName  String
+  phone     String?
+  role      String   @default("user")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  properties   Property[]
+  inquiries    Inquiry[]
+  visits       Visit[]
+  reservations Reservation[]
+}
+
+model Property {
+  id              String   @id @default(cuid())
+  title           String
+  description     String
+  price           Float
+  currency        String   @default("FCFA")
+  type            String
+  transactionType String
+  surface         Int
+  rooms           Int?
+  bedrooms        Int?
+  bathrooms       Int?
+  address         String
+  city            String
+  neighborhood    String?
+  postalCode      String?
+  latitude        Float?
+  longitude       Float?
+  images          String   @default("[]")
+  features        String   @default("[]")
+  available       Boolean  @default(true)
+  featured        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  ownerId         String?
+  owner           User?    @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+
+  inquiries    Inquiry[]
+  visits       Visit[]
+  reservations Reservation[]
+
+  @@index([city])
+  @@index([transactionType])
+  @@index([type])
+  @@index([available])
+}
+
+model Inquiry {
+  id         String   @id @default(cuid())
+  name       String
+  email      String
+  phone      String?
+  message    String
+  status     String   @default("pending")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  propertyId String?
+  userId     String?
+  property   Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Visit {
+  id            String   @id @default(cuid())
+  name          String
+  email         String
+  phone         String?
+  preferredDate String?
+  preferredTime String?
+  notes         String?
+  status        String   @default("pending")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  propertyId    String
+  userId        String?
+  property      Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([preferredDate])
+}
+
+model Reservation {
+  id             String   @id @default(cuid())
+  name           String
+  email          String
+  phone          String?
+  startDate      String
+  endDate        String
+  numberOfGuests Int?
+  notes          String?
+  status         String   @default("pending")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  propertyId     String
+  userId         String?
+  property       Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user           User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([startDate])
+}
