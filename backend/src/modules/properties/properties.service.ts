@@ -52,9 +52,11 @@ export class PropertiesService {
     const where = {
       ...(query.all ? {} : query.available === undefined ? { available: true } : { available: query.available }),
       ...(query.city ? { city: { contains: query.city } } : {}),
-      ...(query.type ? { type: query.type } : {}),
-      ...(query.transactionType ? { transactionType: query.transactionType } : {}),
-      ...(query.minPrice !== undefined || query.maxPrice !== undefined ? { price: { ...(query.minPrice !== undefined ? { gte: query.minPrice } : {}), ...(query.maxPrice !== undefined ? { lte: query.maxPrice } : {}) } } : {}),
+      ...(query.type ? { type: query.type as any } : {}),
+      ...(query.transactionType ? { transactionType: query.transactionType as any } : {}),
+      ...(query.minPrice !== undefined || query.maxPrice !== undefined
+        ? { price: { ...(query.minPrice !== undefined ? { gte: query.minPrice } : {}), ...(query.maxPrice !== undefined ? { lte: query.maxPrice } : {}) } }
+        : {}),
       ...(query.minSurface !== undefined ? { surface: { gte: query.minSurface } } : {}),
       ...(query.rooms !== undefined ? { rooms: { gte: query.rooms } } : {}),
       ...(query.search ? { OR: [{ title: { contains: query.search } }, { description: { contains: query.search } }] } : {}),
@@ -63,11 +65,11 @@ export class PropertiesService {
     const items = query.all
       ? await this.prisma.property.findMany({ where, orderBy: { createdAt: 'desc' } })
       : await this.prisma.property.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        skip: (query.page - 1) * query.limit,
-        take: query.limit,
-      });
+          where,
+          orderBy: { createdAt: 'desc' },
+          skip: (query.page - 1) * query.limit,
+          take: query.limit,
+        });
 
     return {
       data: items.map((item) => this.serialize(item as unknown as Record<string, unknown>)),
@@ -95,6 +97,10 @@ export class PropertiesService {
       const property = await this.prisma.property.create({
         data: {
           ...dto,
+          // cast enums (le DTO utilise des strings litérales, Prisma attend le type enum)
+          type: dto.type as any,
+          transactionType: dto.transactionType as any,
+          currency: (dto.currency ?? 'FCFA') as any,
           images: JSON.stringify(images),
           features: JSON.stringify(dto.features ?? []),
           ownerId,
@@ -115,12 +121,15 @@ export class PropertiesService {
     const images = [...(dto.images ?? existingImages).map(normalizeUploadReference), ...uploadedImages];
     if (images.length < 1) throw new BadRequestException('Ajoutez au moins une photo du bien');
     if (images.length > MAX_PROPERTY_IMAGES) throw new BadRequestException(`Maximum ${MAX_PROPERTY_IMAGES} photos autorisées`);
-    const { images: _images, features, ...scalarFields } = dto;
+    const { images: _images, features, type, transactionType, currency, ...scalarFields } = dto;
     try {
       const property = await this.prisma.property.update({
         where: { id },
         data: {
           ...scalarFields,
+          ...(type ? { type: type as any } : {}),
+          ...(transactionType ? { transactionType: transactionType as any } : {}),
+          ...(currency ? { currency: currency as any } : {}),
           images: JSON.stringify(images),
           ...(features ? { features: JSON.stringify(features) } : {}),
         },

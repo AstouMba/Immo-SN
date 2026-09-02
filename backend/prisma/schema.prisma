@@ -1,19 +1,65 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = []
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  user
+  admin
+}
+
+enum InquiryStatus {
+  pending
+  contacted
+  closed
+}
+
+enum VisitStatus {
+  pending
+  confirmed
+  cancelled
+  completed
+}
+
+enum ReservationStatus {
+  pending
+  confirmed
+  cancelled
+  completed
+}
+
+enum PropertyType {
+  apartment
+  house
+  villa
+  land
+  office
+  commercial
+}
+
+enum TransactionType {
+  sale
+  rent
+}
+
+enum Currency {
+  FCFA
+  EUR
+  USD
 }
 
 model User {
   id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  fullName  String
-  phone     String?
-  role      String   @default("user")
+  email     String   @unique @db.VarChar(255)
+  password  String   @db.VarChar(255)
+  fullName  String   @db.VarChar(120)
+  phone     String?  @db.VarChar(32)
+  role      UserRole @default(user)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -21,34 +67,37 @@ model User {
   inquiries    Inquiry[]
   visits       Visit[]
   reservations Reservation[]
+
+  @@index([role])
+  @@map("users")
 }
 
 model Property {
-  id              String   @id @default(cuid())
-  title           String
-  description     String
-  price           Float
-  currency        String   @default("FCFA")
-  type            String
-  transactionType String
+  id              String          @id @default(cuid())
+  title           String          @db.VarChar(180)
+  description     String          @db.Text
+  price           Int
+  currency        Currency        @default(FCFA)
+  type            PropertyType
+  transactionType TransactionType
   surface         Int
-  rooms           Int?
-  bedrooms        Int?
-  bathrooms       Int?
-  address         String
-  city            String
-  neighborhood    String?
-  postalCode      String?
+  rooms           Int?            @default(0)
+  bedrooms        Int?            @default(0)
+  bathrooms       Int?            @default(0)
+  address         String          @db.VarChar(255)
+  city            String          @db.VarChar(80)
+  neighborhood    String?         @db.VarChar(120)
+  postalCode      String?         @db.VarChar(20)
   latitude        Float?
   longitude       Float?
-  images          String   @default("[]")
-  features        String   @default("[]")
-  available       Boolean  @default(true)
-  featured        Boolean  @default(false)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  images          String          @default("[]") @db.Text
+  features        String          @default("[]") @db.Text
+  available       Boolean         @default(true)
+  featured        Boolean         @default(false)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
   ownerId         String?
-  owner           User?    @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  owner           User?           @relation(fields: [ownerId], references: [id], onDelete: SetNull)
 
   inquiries    Inquiry[]
   visits       Visit[]
@@ -58,63 +107,73 @@ model Property {
   @@index([transactionType])
   @@index([type])
   @@index([available])
+  @@index([featured])
+  @@index([createdAt])
+  @@map("properties")
 }
 
 model Inquiry {
-  id         String   @id @default(cuid())
-  name       String
-  email      String
-  phone      String?
-  message    String
-  status     String   @default("pending")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id         String        @id @default(cuid())
+  name       String        @db.VarChar(120)
+  email      String        @db.VarChar(255)
+  phone      String?       @db.VarChar(32)
+  message    String        @db.Text
+  status     InquiryStatus @default(pending)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
   propertyId String?
   userId     String?
-  property   Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
-  user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  property   Property?     @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  user       User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([status])
   @@index([createdAt])
+  @@index([propertyId])
+  @@map("inquiries")
 }
 
 model Visit {
-  id            String   @id @default(cuid())
-  name          String
-  email         String
-  phone         String?
-  preferredDate String?
-  preferredTime String?
-  notes         String?
-  status        String   @default("pending")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id            String      @id @default(cuid())
+  name          String      @db.VarChar(120)
+  email         String      @db.VarChar(255)
+  phone         String?     @db.VarChar(32)
+  preferredDate DateTime?
+  preferredTime String?     @db.VarChar(16)
+  notes         String?     @db.Text
+  status        VisitStatus @default(pending)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
   propertyId    String
   userId        String?
-  property      Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  user          User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  property      Property    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user          User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([status])
   @@index([preferredDate])
+  @@index([propertyId])
+  @@map("visits")
 }
 
 model Reservation {
-  id             String   @id @default(cuid())
-  name           String
-  email          String
-  phone          String?
-  startDate      String
-  endDate        String
-  numberOfGuests Int?
-  notes          String?
-  status         String   @default("pending")
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id             String            @id @default(cuid())
+  name           String            @db.VarChar(120)
+  email          String            @db.VarChar(255)
+  phone          String?           @db.VarChar(32)
+  startDate      DateTime
+  endDate        DateTime
+  numberOfGuests Int?              @default(1)
+  notes          String?           @db.Text
+  status         ReservationStatus @default(pending)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
   propertyId     String
   userId         String?
-  property       Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  user           User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  property       Property          @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user           User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([status])
   @@index([startDate])
+  @@index([propertyId])
+  @@index([startDate, endDate])
+  @@map("reservations")
 }

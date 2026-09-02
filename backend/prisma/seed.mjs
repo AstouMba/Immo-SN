@@ -1,6 +1,5 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
-import 'dotenv/config';
 
 const prisma = new PrismaClient();
 
@@ -244,9 +243,7 @@ async function main() {
   });
 
   await prisma.property.deleteMany({
-    where: {
-      city: { notIn: dakarRegionCities },
-    },
+    where: { city: { notIn: dakarRegionCities } },
   });
 
   for (const property of properties) {
@@ -255,6 +252,9 @@ async function main() {
     await prisma.property.create({
       data: {
         ...property,
+        // Le client Prisma accepte maintenant directement les valeurs d'enum (string identiques)
+        type: property.type,
+        transactionType: property.transactionType,
         images: parseJson(property.images),
         features: parseJson(property.features),
         ownerId: admin.id,
