@@ -22,13 +22,19 @@ export class InquiriesController {
 
   @Roles('admin')
   @Get()
-  findAll() { return this.inquiries.findAll(); }
+  findAll() {
+    return this.inquiries.findAll();
+  }
 
   @Public()
   @Post()
-  create(@Body() dto: CreateInquiryDto) { return this.inquiries.create(dto); }
+  create(@Body() dto: CreateInquiryDto) {
+    return this.inquiries.create(dto);
+  }
 
   @Roles('admin')
   @Patch(':id/status')
-  updateStatus(@Param('id') id: string, @Body() dto: UpdateInquiryStatusDto) { return this.inquiries.updateStatus(id, dto.status); }
+  updateStatus(@Param('id') id: string, @Body() dto: UpdateInquiryStatusDto) {
+    return this.inquiries.updateStatus(id, dto.status);
+  }
 }
