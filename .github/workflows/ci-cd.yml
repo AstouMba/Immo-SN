@@ -80,19 +80,28 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
+    # Skip if SSH_PRIVATE_KEY secret is missing (allows the workflow to still build/push without deploy)
     if: ${{ secrets.SSH_PRIVATE_KEY != '' }}
+    env:
+      REMOTE_COMPOSE_PATH: ${{ secrets.REMOTE_COMPOSE_PATH || '~' }}
+      SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+      BACKEND_IMAGE: ghcr.io/${{ github.repository_owner }}/${{ github.repository }}-backend:latest
+      FRONTEND_IMAGE: ghcr.io/${{ github.repository_owner }}/${{ github.repository }}-frontend:latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v0.1.9
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT || '22' }}
+          port: ${{ env.SSH_PORT }}
+          envs: REMOTE_COMPOSE_PATH,BACKEND_IMAGE,FRONTEND_IMAGE
           script: |
-            cd ${{ secrets.REMOTE_COMPOSE_PATH || '~' }}
-            docker pull ghcr.io/${{ github.repository_owner }}/${{ github.repository }}-backend:latest
-            docker pull ghcr.io/${{ github.repository_owner }}/${{ github.repository }}-frontend:latest
+            set -e
+            cd "${REMOTE_COMPOSE_PATH}"
+            docker pull "${BACKEND_IMAGE}"
+            docker pull "${FRONTEND_IMAGE}"
             docker compose -f docker-compose.prod.yml --env-file .env.prod pull --ignore-pull-failures
             docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --remove-orphans
