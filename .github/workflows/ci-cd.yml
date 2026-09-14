@@ -80,11 +80,10 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
-    # Skip if SSH_PRIVATE_KEY secret is missing (allows the workflow to still build/push without deploy)
-    if: ${{ secrets.SSH_PRIVATE_KEY != '' }}
+    if: ${{ vars.DEPLOY_ENABLED == 'true' }}
     env:
-      REMOTE_COMPOSE_PATH: ${{ secrets.REMOTE_COMPOSE_PATH || '~' }}
-      SSH_PORT: ${{ secrets.SSH_PORT || '22' }}
+      REMOTE_COMPOSE_PATH: ${{ vars.REMOTE_COMPOSE_PATH || '~' }}
+      SSH_PORT: ${{ vars.SSH_PORT || '22' }}
       BACKEND_IMAGE: ghcr.io/${{ github.repository_owner }}/${{ github.repository }}-backend:latest
       FRONTEND_IMAGE: ghcr.io/${{ github.repository_owner }}/${{ github.repository }}-frontend:latest
     steps:
